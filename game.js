@@ -244,6 +244,24 @@ class SpeedPowerUp {
   }
 }
 
+// ── Power-up de disparo triple ────────────────────────────────────────────────
+class TripleShotPowerUp extends SpeedPowerUp {
+  draw() {
+    ctx.save();
+    ctx.strokeStyle = '#ff80c0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ff80c0';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('T', this.x, this.y);
+    ctx.restore();
+  }
+}
+
 // ── Ship ──────────────────────────────────────────────────────────────────────
 class Ship {
   constructor() { this.reset(); }
@@ -259,6 +277,7 @@ class Ship {
     this.invincible    = 3;
     this.shootCooldown = 0;
     this.speedTimer    = 0;
+    this.tripleShotTimer = 0;
     this.dead          = false;
   }
 
@@ -287,6 +306,7 @@ class Ship {
     this.x = wrap(this.x + this.vx * (dt + boostedDt), W);
     this.y = wrap(this.y + this.vy * (dt + boostedDt), H);
     this.speedTimer = Math.max(0, this.speedTimer - dt);
+    this.tripleShotTimer = Math.max(0, this.tripleShotTimer - dt);
   }
 
   tryShoot() {
@@ -295,7 +315,11 @@ class Ship {
     const NOSE = 21;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
-    return [new Bullet(ox, oy, this.angle)];
+    const spread = 4 * Math.PI / 180;
+    const angles = this.tripleShotTimer > 0
+      ? [this.angle - spread, this.angle, this.angle + spread]
+      : [this.angle];
+    return angles.map(angle => new Bullet(ox, oy, angle));
   }
 
   draw() {
@@ -426,6 +450,7 @@ function killShip() {
   explode(ship.x, ship.y, 14);
   ship.dead = true;
   ship.speedTimer = 0;
+  ship.tripleShotTimer = 0;
   lives--;
   if (lives <= 0) {
     state = 'gameover';
@@ -481,7 +506,10 @@ function update(dt) {
         a.dead = true;
         score += a instanceof ShootingStar ? 200 : POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
-        if (!(a instanceof ShootingStar) && Math.random() < 0.2) powerUps.push(new SpeedPowerUp(a.x, a.y));
+        if (!(a instanceof ShootingStar) && Math.random() < 0.2) {
+          const PowerUp = Math.random() < 0.5 ? SpeedPowerUp : TripleShotPowerUp;
+          powerUps.push(new PowerUp(a.x, a.y));
+        }
         newAsteroids.push(...a.split());
       }
     }
@@ -492,7 +520,8 @@ function update(dt) {
   // Nave vs power-up
   powerUps = powerUps.filter(powerUp => {
     if (dist(ship, powerUp) < ship.radius + powerUp.radius) {
-      ship.speedTimer = 5;
+      if (powerUp instanceof TripleShotPowerUp) ship.tripleShotTimer = 5;
+      else ship.speedTimer = 5;
       return false;
     }
     return true;
@@ -543,6 +572,15 @@ function drawHUD() {
     ctx.strokeStyle = '#00dfff';
     ctx.strokeRect(14, 57, 160, 8);
     ctx.fillRect(14, 57, 160 * ship.speedTimer / 5, 8);
+  }
+  if (ship.tripleShotTimer > 0) {
+    const y = ship.speedTimer > 0 ? 90 : 50;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ff80c0';
+    ctx.fillText(`DISPARO TRIPLE  ${ship.tripleShotTimer.toFixed(1)}s`, 14, y);
+    ctx.strokeStyle = '#ff80c0';
+    ctx.strokeRect(14, y + 7, 160, 8);
+    ctx.fillRect(14, y + 7, 160 * ship.tripleShotTimer / 5, 8);
   }
 }
 
