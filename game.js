@@ -118,6 +118,57 @@ class Asteroid {
   }
 }
 
+// ── Estrella fugaz ────────────────────────────────────────────────────────────
+class ShootingStar extends Asteroid {
+  constructor(x, y) {
+    super(x, y, 1);
+    const angle = rand(0, Math.PI * 2);
+    this.vx = Math.cos(angle) * 260;
+    this.vy = Math.sin(angle) * 260;
+    this.ttl = 6;
+  }
+
+  update(dt) {
+    super.update(dt);
+    this.ttl -= dt;
+    if (this.ttl <= 0) this.dead = true;
+  }
+
+  split() { return []; }
+
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, Math.max(0, this.ttl));
+    ctx.translate(this.x, this.y);
+    ctx.strokeStyle = '#ffca55';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ffb52e';
+    ctx.shadowBlur = 12;
+
+    // La estela es local: no une posiciones a través de bordes opuestos.
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-this.vx / 260 * 45, -this.vy / 260 * 45);
+    ctx.stroke();
+
+    ctx.rotate(this.rot);
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = -Math.PI / 2 + i * Math.PI / 5;
+      const radius = i % 2 === 0 ? this.radius : this.radius * 0.45;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#ffca55';
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 // ── Power-up de velocidad ─────────────────────────────────────────────────────
 class SpeedPowerUp {
   constructor(x, y) {
@@ -268,6 +319,25 @@ let ship, bullets, asteroids, particles, powerUps;
 let score, lives, level;
 let state;      // 'playing' | 'dead' | 'gameover'
 let deadTimer;
+let shootingStarTimer;
+
+function resetShootingStarTimer() {
+  shootingStarTimer = rand(12, 18);
+}
+
+function spawnShootingStar() {
+  const SAFE_DIST = 130;
+  let x, y;
+  do {
+    x = rand(0, W);
+    y = rand(0, H);
+    // La distancia de seguridad también tiene en cuenta los bordes opuestos.
+    const dx = Math.abs(x - ship.x);
+    const dy = Math.abs(y - ship.y);
+    if (Math.hypot(Math.min(dx, W - dx), Math.min(dy, H - dy)) >= SAFE_DIST) break;
+  } while (true);
+  asteroids.push(new ShootingStar(x, y));
+}
 
 function spawnAsteroids(count) {
   const SAFE_DIST = 130;
@@ -291,6 +361,7 @@ function initGame() {
   lives  = 3;
   level  = 1;
   state  = 'playing';
+  resetShootingStarTimer();
   spawnAsteroids(4);
 }
 
@@ -299,7 +370,9 @@ function nextLevel() {
   bullets   = [];
   particles = [];
   powerUps  = [];
+  asteroids = [];
   ship.reset();
+  resetShootingStarTimer();
   spawnAsteroids(3 + level);
 }
 
@@ -334,6 +407,7 @@ function update(dt) {
     particles.forEach(p => p.update(dt));
     particles = particles.filter(p => !p.dead);
     asteroids.forEach(a => a.update(dt));
+    asteroids = asteroids.filter(a => !a.dead);
     if (deadTimer <= 0) { state = 'playing'; ship.reset(); }
     return;
   }
@@ -344,6 +418,11 @@ function update(dt) {
   }
 
   ship.update(dt);
+  shootingStarTimer -= dt;
+  if (shootingStarTimer <= 0) {
+    if (!asteroids.some(a => a instanceof ShootingStar && !a.dead)) spawnShootingStar();
+    resetShootingStarTimer();
+  }
   bullets.forEach(b => b.update(dt));
   asteroids.forEach(a => a.update(dt));
   particles.forEach(p => p.update(dt));
@@ -358,9 +437,9 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        score += a instanceof ShootingStar ? 200 : POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
-        if (Math.random() < 0.2) powerUps.push(new SpeedPowerUp(a.x, a.y));
+        if (!(a instanceof ShootingStar) && Math.random() < 0.2) powerUps.push(new SpeedPowerUp(a.x, a.y));
         newAsteroids.push(...a.split());
       }
     }
@@ -388,7 +467,7 @@ function update(dt) {
   }
 
   // Nivel completado
-  if (asteroids.length === 0) nextLevel();
+  if (!asteroids.some(a => !(a instanceof ShootingStar))) nextLevel();
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
