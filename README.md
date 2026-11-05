@@ -45,4 +45,5 @@ Luego visita `http://localhost:3000`.
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
 - Velocidad: algunos asteroides dejan un power-up que duplica la velocidad de la nave durante 5 segundos. Recoger otro reinicia el tiempo.
+- Escudo: algunos asteroides dejan un power-up que protege durante 5 segundos. Al chocar con un asteroide o estrella fugaz, lo destruye como un disparo; recoger otro escudo reinicia el tiempo. El escudo se pierde al cambiar de nivel o de vida.
 - Estrella fugaz: aparece ocasionalmente, es dorada y deja una estela. Se mueve más rápido, desaparece tras 6 segundos y no se fragmenta. Destruirla es opcional para avanzar de nivel.
