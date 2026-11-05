@@ -9,18 +9,30 @@
     body {
       background: #000;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
+      font-family: monospace;
+      color: #fff;
     }
     canvas {
       display: block;
       border: 1px solid #222;
     }
+    .skins { display: flex; align-items: center; gap: 8px; margin: 12px; flex-wrap: wrap; justify-content: center; }
+    .skins button { background: #111; border: 1px solid #555; color: #fff; cursor: pointer; font: inherit; padding: 4px 8px; }
+    .skins button[aria-pressed="true"] { border-color: #fff; background: #333; }
+    .skins button:focus-visible { outline: 2px solid #00dfff; outline-offset: 2px; }
+    .skins canvas { border: 0; margin: auto; }
   </style>
 </head>
 <body>
-  <canvas id="canvas" width="800" height="600"></canvas>
+  <canvas id="canvas" width="800" height="600" tabindex="-1"></canvas>
+  <div class="skins" role="group" aria-label="Apariencia de la nave">
+    <span>NAVE:</span>
+    <div id="skin-options" class="skins"></div>
+  </div>
   <script src="game.js"></script>
 </body>
 </html>
