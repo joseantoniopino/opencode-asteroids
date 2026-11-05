@@ -5,11 +5,62 @@ const ctx = canvas.getContext('2d');
 const W = 800;
 const H = 600;
 
+// ── Apariencias (solo cosméticas) ─────────────────────────────────────────────
+const SKINS = [
+  { id: 'clasica', name: 'Clásica', color: '#fff', flame: '#ff8200', points: [[20, 0], [-12, -9], [-7, 0], [-12, 9]] },
+  { id: 'neon', name: 'Neón', color: '#00dfff', flame: '#00dfff', points: [[20, 0], [-10, -10], [-6, -3], [-6, 3], [-10, 10]] },
+  { id: 'fenix', name: 'Fénix', color: '#ff5555', flame: '#ffb52e', points: [[20, 0], [-12, -10], [-8, -3], [-12, 0], [-8, 3], [-12, 10]] },
+  { id: 'exploradora', name: 'Exploradora', color: '#80ef80', flame: '#aaff77', points: [[20, 0], [2, -7], [-12, -9], [-9, 0], [-12, 9], [2, 7]] },
+];
+
+let selectedSkin = SKINS[0];
+try {
+  selectedSkin = SKINS.find(skin => skin.id === localStorage.getItem('asteroids-skin')) || SKINS[0];
+} catch (_) { /* El juego también funciona sin almacenamiento. */ }
+
+function drawShipShape(context, skin) {
+  context.strokeStyle = skin.color;
+  context.lineJoin = 'round';
+  context.beginPath();
+  skin.points.forEach(([x, y], i) => i === 0 ? context.moveTo(x, y) : context.lineTo(x, y));
+  context.closePath();
+  context.stroke();
+}
+
+const skinOptions = document.getElementById('skin-options');
+const skinButtons = SKINS.map(skin => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  const preview = document.createElement('canvas');
+  preview.width = 48;
+  preview.height = 32;
+  preview.setAttribute('aria-hidden', 'true');
+  const previewContext = preview.getContext('2d');
+  previewContext.translate(24, 16);
+  previewContext.lineWidth = 1.5;
+  drawShipShape(previewContext, skin);
+  button.append(preview, document.createTextNode(skin.name));
+  button.addEventListener('click', () => {
+    selectedSkin = skin;
+    try { localStorage.setItem('asteroids-skin', skin.id); } catch (_) { /* Preferencia temporal. */ }
+    updateSkinButtons();
+    canvas.focus({ preventScroll: true });
+  });
+  skinOptions.appendChild(button);
+  return button;
+});
+
+function updateSkinButtons() {
+  skinButtons.forEach((button, i) => button.setAttribute('aria-pressed', String(SKINS[i] === selectedSkin)));
+}
+updateSkinButtons();
+
 // ── Input ─────────────────────────────────────────────────────────────────────
 const keys = {};
 const justPressed = {};
 
 window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target instanceof HTMLButtonElement) return;
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
@@ -255,18 +306,8 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = '#fff';
     ctx.lineWidth   = 1.5;
-    ctx.lineJoin    = 'round';
-
-    // Silueta clásica: triángulo con muesca trasera
-    ctx.beginPath();
-    ctx.moveTo( 20,  0);   // nariz
-    ctx.lineTo(-12, -9);   // ala izquierda
-    ctx.lineTo( -7,  0);   // muesca trasera
-    ctx.lineTo(-12,  9);   // ala derecha
-    ctx.closePath();
-    ctx.stroke();
+    drawShipShape(ctx, selectedSkin);
 
     // Llama del propulsor
     if (this.thrusting && Math.random() > 0.35) {
@@ -274,7 +315,8 @@ class Ship {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8,  4);
-      ctx.strokeStyle = 'rgba(255, 130, 0, 0.85)';
+      ctx.strokeStyle = selectedSkin.flame;
+      ctx.globalAlpha = 0.85;
       ctx.stroke();
     }
 
@@ -475,16 +517,9 @@ function drawLifeIcon(x, y) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(-Math.PI / 2);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth   = 1.2;
-  ctx.lineJoin    = 'round';
-  ctx.beginPath();
-  ctx.moveTo( 9,  0);
-  ctx.lineTo(-6, -5);
-  ctx.lineTo(-3,  0);
-  ctx.lineTo(-6,  5);
-  ctx.closePath();
-  ctx.stroke();
+  ctx.scale(0.45, 0.5);
+  ctx.lineWidth = 2.4;
+  drawShipShape(ctx, selectedSkin);
   ctx.restore();
 }
 
